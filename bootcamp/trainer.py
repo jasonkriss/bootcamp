@@ -25,7 +25,7 @@ class Trainer(object):
     def _simulate(self, min_batch_size, max_episode_steps):
         batch = []
         timesteps = 0
-        if max_episode_steps is None: max_episode_steps = env.spec.max_episode_steps
+        if max_episode_steps is None: max_episode_steps = self.env.spec.max_episode_steps
         while timesteps < min_batch_size:
             observations, actions, rewards = [], [], []
             observation = self.env.reset()
