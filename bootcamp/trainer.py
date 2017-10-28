@@ -1,6 +1,8 @@
 import itertools
 from collections import namedtuple
 
+import numpy as np
+
 from bootcamp.exceptions import StopTraining
 
 Episode = namedtuple('Episode', ['observations', 'actions', 'rewards'])
