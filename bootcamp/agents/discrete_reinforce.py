@@ -6,7 +6,7 @@ from torch.autograd import Variable
 from bootcamp.agents import Agent
 from bootcamp.utils import compute_return, make_tensor, make_variable
 
-class Reinforce(Agent):
+class DiscreteReinforce(Agent):
     def __init__(self, approximator, optimizer):
         self._approximator = approximator
         self._optimizer = optimizer
