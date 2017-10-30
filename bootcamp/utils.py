@@ -11,3 +11,6 @@ def make_tensor(array, dtype='float32'):
 
 def make_variable(array, dtype='float32'):
     return Variable(make_tensor(array, dtype))
+
+def normalize(array):
+    return (array - np.mean(array)) / (np.std(array) + np.finfo(np.float32).eps)
