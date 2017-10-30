@@ -3,22 +3,28 @@ import torch
 from torch.autograd import Variable
 
 from bootcamp.agents import Agent
-from bootcamp.utils import compute_return, make_tensor, make_variable
+from bootcamp.utils import compute_return, make_tensor, make_variable, normalize
 
 class ContinuousReinforce(Agent):
-    def __init__(self, approximator, stds, optimizer):
+    def __init__(self, approximator, stds, optimizer, baseline=None):
         self._approximator = approximator
         self._stds = stds
         self._optimizer = optimizer
+        self._baseline = baseline
 
     def train(self, batch):
         self._optimizer.zero_grad()
         x = self._build_inputs(batch)
         y = self._build_targets(batch)
         returns = self._build_returns(batch)
+        advantages = returns
         means = self._approximator(x)
+        if self._baseline is not None:
+            baselines = self._build_baselines(x, returns)
+            advantages = returns - baselines
         log_probs = -(torch.prod(self._stds) + (((y - means) ** 2) / self._stds).sum(1)) / 2
-        objective = -(log_probs * returns).mean()
+        weights = make_variable(normalize(advantages))
+        objective = -(log_probs * weights).mean()
         objective.backward()
         self._optimizer.step()
 
@@ -36,6 +42,17 @@ class ContinuousReinforce(Agent):
         return make_variable(actions)
 
     def _build_returns(self, batch):
-        raw_returns = np.concatenate([np.repeat(compute_return(episode.rewards), episode.rewards.shape[0]) for episode in batch])
-        normalized_returns = (raw_returns - np.mean(raw_returns)) / (np.std(raw_returns) + np.finfo(np.float32).eps)
-        return make_variable(normalized_returns)
+        return np.array([compute_return(episode.rewards[t:], gamma=0.9) for episode in batch for t in range(episode.rewards.shape[0])])
+
+    def _build_baselines(self, x, returns):
+        approximator, loss, optimizer, num_iters = self._baseline
+        targets = make_variable(normalize(returns))
+        for i in range(num_iters):
+            optimizer.zero_grad()
+            baselines = approximator(x).squeeze()
+            output = loss(baselines, targets)
+            output.backward()
+            optimizer.step()
+        baselines = approximator(x).squeeze()
+        return_mean, return_std = np.mean(returns), np.std(returns)
+        return (return_std * baselines.data.numpy()) + return_mean
